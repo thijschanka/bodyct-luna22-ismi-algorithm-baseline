@@ -2,6 +2,8 @@ from typing import Dict
 
 import SimpleITK
 import numpy as np
+from pathlib import Path
+import json
 
 import tensorflow.keras
 from tensorflow.keras.applications import VGG16
@@ -10,15 +12,8 @@ from tensorflow.keras.applications import VGG16
 tensorflow.keras.backend.set_image_data_format("channels_first")
 tensorflow.keras.backend.set_floatx("float32")
 from data import (
-    load_and_resample_nodule_img,
     center_crop_volume,
     get_cross_slices_from_cube,
-)
-
-from evalutils import ClassificationAlgorithm
-from evalutils.validators import (
-    UniquePathIndicesValidator,
-    UniqueImagesValidator,
 )
 
 
@@ -33,16 +28,8 @@ def clip_and_scale(
     return data
 
 
-class Nodule_classifier(ClassificationAlgorithm):
+class Nodule_classifier:
     def __init__(self):
-        super().__init__(
-            validators=dict(
-                input_image=(
-                    UniqueImagesValidator(),
-                    UniquePathIndicesValidator(),
-                )
-            ),
-        )
 
         self.input_size = 224
         self.input_spacing = 0.2
@@ -81,6 +68,13 @@ class Nodule_classifier(ClassificationAlgorithm):
 
         print("Models initialized")
 
+    def load_image(self) -> SimpleITK.Image:
+
+        ct_images = list(Path("/input/images/ct/").glob("*"))
+        image = SimpleITK.ReadImage(str(ct_images[0]))
+
+        return image
+
     def preprocess(
         self,
         img: SimpleITK.Image,
@@ -113,7 +107,7 @@ class Nodule_classifier(ClassificationAlgorithm):
         # Return image data as a numpy array
         return SimpleITK.GetArrayFromImage(resampled_img)
 
-    def predict(self, *, input_image: SimpleITK.Image) -> Dict:
+    def predict(self, input_image: SimpleITK.Image) -> Dict:
 
         print(f"Processing image of size: {input_image.GetSize()}")
 
@@ -140,13 +134,27 @@ class Nodule_classifier(ClassificationAlgorithm):
         texture = np.argmax(self.model_texture(nodule_data[None]).numpy())
 
         result = dict(
-            malignancy_risk=str(np.round(malignancy, 3)),
-            texture=str(texture),
+            malignancy_risk=np.round(malignancy, 3),
+            texture=texture,
         )
 
         print(result)
 
         return result
+
+    def write_outputs(self, outputs: dict):
+
+        with open("/output/lung-nodule-malignancy-risk.json", "w") as f:
+            json.dump(float(outputs["malignancy_risk"]), f)
+
+        with open("/output/lung-nodule-type.json", "w") as f:
+            json.dump(int(outputs["texture"]), f)
+
+    def process(self):
+
+        image = self.load_image()
+        result = self.predict(image)
+        self.write_outputs(result)
 
 
 if __name__ == "__main__":
