@@ -23,4 +23,22 @@ docker run --rm \
         -v nodule_classifier-output-$VOLUME_SUFFIX:/output/ \
         nodule_classifier
 
+docker run --rm \
+        -v nodule_classifier-output-$VOLUME_SUFFIX:/output/ \
+        -v $SCRIPTPATH/test/:/input/ \
+        python:3.9-slim python -c """
+import json
+
+predicted_risk = json.load(open('/output/lung-nodule-malignancy-risk.json'))
+predicted_type = json.load(open('/output/lung-nodule-type.json'))
+
+expected_outputs = json.load(open('/input/expected_outputs.json'))
+
+assert predicted_risk == expected_outputs['malignancy_risk'], 'malignancy risk does not match; test failed!'
+assert predicted_type == expected_outputs['nodule_type'], 'nodule type does not match; test failed!'
+
+print('Tests successfully passed!')
+
+"""
+
 docker volume rm nodule_classifier-output-$VOLUME_SUFFIX
