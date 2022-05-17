@@ -1,4 +1,4 @@
-# Algorithm container for classifying lung nodules in chest CT
+# Algorithm for classifying lung nodules in chest CT
 
 The source code for the algorithm container for classifying 3D blocks of lung nodules from chest CT (shaped 128x128x64 in x,y,z), generated with evalutils version 0.3.1.
 
