@@ -2,7 +2,6 @@ from enum import Enum, unique
 from pathlib import Path
 from typing import Tuple, List, Dict, Any, Union
 
-import SimpleITK.SimpleITK
 import numpy as np
 import SimpleITK
 
@@ -141,7 +140,13 @@ def _generate_training_dataset(
 
     # Create a dataset of [number_of_nodules x 3 x input_size x input_size] if using cross slices
     dataset_inputs = np.zeros(
-        (len(nodule_info), 3 if cross_slices_only else input_size, input_size, input_size), dtype=np.float32
+        (
+            len(nodule_info),
+            3 if cross_slices_only else input_size,
+            input_size,
+            input_size,
+        ),
+        dtype=np.float32,
     )
     labels_malignancy = np.zeros((len(nodule_info), 2), dtype=np.float32)
     labels_nodule_type = np.zeros((len(nodule_info), 3), dtype=np.float32)
@@ -202,9 +207,14 @@ def load_dataset(
     generate_if_not_present: bool = True,
     always_generate: bool = False,
 ) -> DATASET_TYPE:
-    file_name = generated_data_dir / f"train_input_data_{input_size}_{new_spacing_mm}{'_cso' if cross_slices_only else ''}.npz"
+    file_name = (
+        generated_data_dir
+        / f"train_input_data_{input_size}_{new_spacing_mm}{'_cso' if cross_slices_only else ''}.npz"
+    )
     if always_generate or (not file_name.is_file() and generate_if_not_present):
-        print(f"Generating the dataset file: {file_name} from the source data at: {source_data_dir}")
+        print(
+            f"Generating the dataset file: {file_name} from the source data at: {source_data_dir}"
+        )
         dataset = _generate_training_dataset(
             input_size=input_size,
             new_spacing_mm=new_spacing_mm,
