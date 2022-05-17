@@ -139,8 +139,6 @@ class Nodule_classifier:
             texture=int(texture),
         )
 
-        print(result)
-
         return result
 
     def write_outputs(self, outputs: dict):
