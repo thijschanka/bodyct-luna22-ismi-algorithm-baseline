@@ -51,7 +51,7 @@ class Nodule_classifier:
         )
 
         # load texture model
-        self.model_texture = VGG16(
+        self.model_nodule_type = VGG16(
             include_top=True,
             weights=None,
             input_tensor=None,
@@ -60,7 +60,7 @@ class Nodule_classifier:
             classes=3,
             classifier_activation="softmax",
         )
-        self.model_texture.load_weights(
+        self.model_nodule_type.load_weights(
             "/opt/algorithm/models/vgg16_noduletype_best_val_accuracy.h5",
             by_name=True,
             skip_mismatch=True,
@@ -70,8 +70,8 @@ class Nodule_classifier:
 
     def load_image(self) -> SimpleITK.Image:
 
-        ct_images = list(Path("/input/images/ct/").glob("*"))
-        image = SimpleITK.ReadImage(str(ct_images[0]))
+        ct_image_path = list(Path("/input/images/ct/").glob("*"))[0]
+        image = SimpleITK.ReadImage(str(ct_image_path))
 
         return image
 
@@ -112,6 +112,7 @@ class Nodule_classifier:
         print(f"Processing image of size: {input_image.GetSize()}")
 
         nodule_data = self.preprocess(input_image)
+
         # Crop a volume of 50 mm^3 around the nodule
         nodule_data = center_crop_volume(
             volume=nodule_data,
@@ -131,11 +132,11 @@ class Nodule_classifier:
         nodule_data = clip_and_scale(nodule_data)
 
         malignancy = self.model_malignancy(nodule_data[None]).numpy()[0, 1]
-        texture = np.argmax(self.model_texture(nodule_data[None]).numpy())
+        texture = np.argmax(self.model_nodule_type(nodule_data[None]).numpy())
 
         result = dict(
-            malignancy_risk=np.round(malignancy, 3),
-            texture=texture,
+            malignancy_risk=round(float(malignancy), 3),
+            texture=int(texture),
         )
 
         print(result)
@@ -145,10 +146,10 @@ class Nodule_classifier:
     def write_outputs(self, outputs: dict):
 
         with open("/output/lung-nodule-malignancy-risk.json", "w") as f:
-            json.dump(float(outputs["malignancy_risk"]), f)
+            json.dump(outputs["malignancy_risk"], f)
 
         with open("/output/lung-nodule-type.json", "w") as f:
-            json.dump(int(outputs["texture"]), f)
+            json.dump(outputs["texture"], f)
 
     def process(self):
 
